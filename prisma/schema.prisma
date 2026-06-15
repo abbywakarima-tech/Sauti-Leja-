@@ -1,0 +1,166 @@
+// This is your Prisma schema file
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id                  String    @id @default(cuid())
+  email               String    @unique
+  phoneNumber         String    @unique
+  password            String
+  fullName            String
+  businessName        String
+  businessType        String
+  location            String
+  preferredLanguage   String    @default("en")
+  profileImage        String?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  
+  // Relations
+  transactions        Transaction[]
+  inventory           Inventory[]
+  reports             Report[]
+  subscription        Subscription?
+  billingHistory      BillingHistory[]
+  creditProfile       CreditProfile?
+}
+
+model Transaction {
+  id            String    @id @default(cuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  productName   String
+  category      String
+  quantity      Int
+  sellingPrice  Float
+  revenue       Float
+  date          DateTime  @default(now())
+  notes         String?
+  recordType    String    @default("manual") // manual or voice
+  audioUrl      String?
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  @@index([userId])
+  @@index([date])
+}
+
+model Inventory {
+  id            String    @id @default(cuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  productName   String
+  category      String
+  stockQuantity Int
+  costPrice     Float
+  sellingPrice  Float
+  unitsSOld     Int       @default(0)
+  reorderLevel  Int?
+  lastRestocked DateTime?
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  @@unique([userId, productName])
+  @@index([userId])
+}
+
+model Report {
+  id            String    @id @default(cuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  reportType    String    // daily, weekly, monthly, quarterly
+  startDate     DateTime
+  endDate       DateTime
+  totalRevenue  Float
+  totalTransactions Int
+  inventorySummary String? // JSON
+  productPerformance String? // JSON
+  
+  createdAt     DateTime  @default(now())
+  
+  @@index([userId])
+}
+
+model Subscription {
+  id            String    @id @default(cuid())
+  userId        String    @unique
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  planType      String    @default("free") // free, starter, business
+  status        String    @default("active")
+  startDate     DateTime  @default(now())
+  endDate       DateTime?
+  autoRenew     Boolean   @default(true)
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  @@index([userId])
+}
+
+model BillingHistory {
+  id            String    @id @default(cuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  planType      String
+  amount        Float
+  currency      String    @default("KES")
+  status        String    @default("pending") // pending, completed, failed
+  paymentMethod String    // mpesa, airtel, card
+  transactionId String?
+  invoiceUrl    String?
+  
+  billingDate   DateTime  @default(now())
+  dueDate       DateTime
+  paidAt        DateTime?
+  
+  createdAt     DateTime  @default(now())
+  
+  @@index([userId])
+}
+
+model CreditProfile {
+  id                      String    @id @default(cuid())
+  userId                  String    @unique
+  user                    User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  creditReadinessScore    Int       @default(0)
+  businessGrowthScore     Int       @default(0)
+  recordConsistencyScore  Int       @default(0)
+  inventoryStabilityScore Int       @default(0)
+  
+  totalRevenue            Float     @default(0)
+  transactionCount        Int       @default(0)
+  monthlyConsistency      Float     @default(0)
+  
+  lastUpdated             DateTime  @default(now())
+  
+  @@index([userId])
+}
+
+model AuditLog {
+  id            String    @id @default(cuid())
+  action        String
+  resource      String
+  resourceId    String
+  userId        String?
+  changes       String?   // JSON
+  
+  createdAt     DateTime  @default(now())
+  
+  @@index([userId])
+  @@index([createdAt])
+}
