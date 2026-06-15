@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: sauti_leja_db
+    environment:
+      POSTGRES_USER: sauti_user
+      POSTGRES_PASSWORD: sauti_password
+      POSTGRES_DB: sauti_leja
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - '5432:5432'
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U sauti_user']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build: .
+    container_name: sauti_leja_app
+    environment:
+      DATABASE_URL: postgresql://sauti_user:sauti_password@db:5432/sauti_leja
+      JWT_SECRET: ${JWT_SECRET:-dev-secret-key}
+      NEXT_PUBLIC_APP_URL: http://localhost:3000
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      STRIPE_PUBLIC_KEY: ${STRIPE_PUBLIC_KEY}
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+    ports:
+      - '3000:3000'
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - .:/app
+      - /app/node_modules
+
+volumes:
+  postgres_data:
